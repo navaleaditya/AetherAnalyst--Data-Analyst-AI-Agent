@@ -41,7 +41,7 @@ celery_app = Celery(
 )
 
 celery_app.conf.update(
-    task_always_eager=False,
+    task_always_eager=True,
     broker_connection_retry_on_startup=True
 )
 
@@ -68,12 +68,12 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 
 def get_state_from_checkpointer(session_id: str) -> Optional[Dict[str, Any]]:
     try:
-        memory = SqliteSaver.from_conn_string(CHECKPOINT_DB_PATH)
-        graph = create_agent_graph(checkpointer=memory)
-        config = {"configurable": {"thread_id": session_id}}
-        snapshot = graph.get_state(config)
-        if snapshot and snapshot.values:
-            return dict(snapshot.values)
+        with SqliteSaver.from_conn_string(CHECKPOINT_DB_PATH) as memory:
+            graph = create_agent_graph(checkpointer=memory)
+            config = {"configurable": {"thread_id": session_id}}
+            snapshot = graph.get_state(config)
+            if snapshot and snapshot.values:
+                return dict(snapshot.values)
     except Exception as e:
         logger.error(f"Failed to read state from checkpointer: {e}")
     return None
@@ -84,95 +84,95 @@ def get_state_from_checkpointer(session_id: str) -> Optional[Dict[str, Any]]:
 def run_agentic_pipeline_task(session_id: str, file_path: str):
     logger.info(f"Starting Celery pipeline task for session {session_id}")
     
-    memory = SqliteSaver.from_conn_string(CHECKPOINT_DB_PATH)
-    graph = create_agent_graph(checkpointer=memory)
-    config = {"configurable": {"thread_id": session_id}}
-    
-    initial_state = {
-        "session_id": session_id,
-        "file_path": file_path,
-        "df_shape": [],
-        "df_columns": [],
-        "df_profile": {},
-        "correlation_summary": [],
-        "task_type": None,
-        "target_column": None,
-        "ml_results": None,
-        "charts": {},
-        "status": "dataset_profiler",
-        "reasoning": None,
-        "report_path": None,
-        "error": None,
-        "logs": ["Session initialized in Celery worker."]
-    }
-    
-    try:
-        # Run graph. It will execute profiler -> correlation -> task detector, then interrupt.
-        graph.invoke(initial_state, config)
+    with SqliteSaver.from_conn_string(CHECKPOINT_DB_PATH) as memory:
+        graph = create_agent_graph(checkpointer=memory)
+        config = {"configurable": {"thread_id": session_id}}
         
-        # Check if paused for human-in-the-loop approval
-        snapshot = graph.get_state(config)
-        if snapshot and snapshot.next:
-            logger.info(f"Pipeline paused after task detector node for session {session_id} - awaiting approval")
-            current_state = dict(snapshot.values)
-            current_state["status"] = "awaiting_approval"
-            current_state["logs"].append("Pipeline paused. Awaiting ML Task & Target column approval.")
-            graph.update_state(config, current_state)
-        else:
-            logger.info(f"Pipeline finished successfully for session {session_id} (no interrupt hit)")
-    except Exception as e:
-        logger.exception(f"Error in Celery background pipeline for session {session_id}")
+        initial_state = {
+            "session_id": session_id,
+            "file_path": file_path,
+            "df_shape": [],
+            "df_columns": [],
+            "df_profile": {},
+            "correlation_summary": [],
+            "task_type": None,
+            "target_column": None,
+            "ml_results": None,
+            "charts": {},
+            "status": "dataset_profiler",
+            "reasoning": None,
+            "report_path": None,
+            "error": None,
+            "logs": ["Session initialized in Celery worker."]
+        }
+        
         try:
+            # Run graph. It will execute profiler -> correlation -> task detector, then interrupt.
+            graph.invoke(initial_state, config)
+            
+            # Check if paused for human-in-the-loop approval
             snapshot = graph.get_state(config)
-            current_state = dict(snapshot.values) if (snapshot and snapshot.values) else {}
-            current_state["status"] = "error"
-            current_state["error"] = str(e)
-            if "logs" not in current_state:
-                current_state["logs"] = []
-            current_state["logs"].append(f"Fatal execution error: {e}")
-            graph.update_state(config, current_state)
-        except Exception as ex:
-            logger.error(f"Failed to record error in SQLite checkpointer: {ex}")
+            if snapshot and snapshot.next:
+                logger.info(f"Pipeline paused after task detector node for session {session_id} - awaiting approval")
+                current_state = dict(snapshot.values)
+                current_state["status"] = "awaiting_approval"
+                current_state["logs"].append("Pipeline paused. Awaiting ML Task & Target column approval.")
+                graph.update_state(config, current_state)
+            else:
+                logger.info(f"Pipeline finished successfully for session {session_id} (no interrupt hit)")
+        except Exception as e:
+            logger.exception(f"Error in Celery background pipeline for session {session_id}")
+            try:
+                snapshot = graph.get_state(config)
+                current_state = dict(snapshot.values) if (snapshot and snapshot.values) else {}
+                current_state["status"] = "error"
+                current_state["error"] = str(e)
+                if "logs" not in current_state:
+                    current_state["logs"] = []
+                current_state["logs"].append(f"Fatal execution error: {e}")
+                graph.update_state(config, current_state)
+            except Exception as ex:
+                logger.error(f"Failed to record error in SQLite checkpointer: {ex}")
 
 @celery_app.task
 def resume_agentic_pipeline_task(session_id: str, task_type: str, target_column: Optional[str]):
     logger.info(f"Resuming Celery pipeline task for session {session_id}")
     
-    memory = SqliteSaver.from_conn_string(CHECKPOINT_DB_PATH)
-    graph = create_agent_graph(checkpointer=memory)
-    config = {"configurable": {"thread_id": session_id}}
-    
-    try:
-        snapshot = graph.get_state(config)
-        if not snapshot or not snapshot.next:
-            logger.warning(f"No paused checkpoint found for session {session_id}")
-            return
-            
-        current_state = dict(snapshot.values)
-        current_state["task_type"] = task_type
-        current_state["target_column"] = target_column if task_type == "classification" else None
-        current_state["status"] = "model_execution"
-        current_state["logs"].append(f"User approved ML Task: '{task_type}' and Target Feature: '{target_column}'. Resuming...")
+    with SqliteSaver.from_conn_string(CHECKPOINT_DB_PATH) as memory:
+        graph = create_agent_graph(checkpointer=memory)
+        config = {"configurable": {"thread_id": session_id}}
         
-        # Save approved configuration in checkpointer state
-        graph.update_state(config, current_state)
-        
-        # Resume loop by invoking with None
-        graph.invoke(None, config)
-        logger.info(f"Pipeline resumed and completed successfully for session {session_id}")
-    except Exception as e:
-        logger.exception(f"Error resuming Celery background pipeline for session {session_id}")
         try:
             snapshot = graph.get_state(config)
-            current_state = dict(snapshot.values) if (snapshot and snapshot.values) else {}
-            current_state["status"] = "error"
-            current_state["error"] = str(e)
-            if "logs" not in current_state:
-                current_state["logs"] = []
-            current_state["logs"].append(f"Fatal task resume error: {e}")
+            if not snapshot or not snapshot.next:
+                logger.warning(f"No paused checkpoint found for session {session_id}")
+                return
+                
+            current_state = dict(snapshot.values)
+            current_state["task_type"] = task_type
+            current_state["target_column"] = target_column if task_type == "classification" else None
+            current_state["status"] = "model_execution"
+            current_state["logs"].append(f"User approved ML Task: '{task_type}' and Target Feature: '{target_column}'. Resuming...")
+            
+            # Save approved configuration in checkpointer state
             graph.update_state(config, current_state)
-        except Exception as ex:
-            logger.error(f"Failed to record error on resume: {ex}")
+            
+            # Resume loop by invoking with None
+            graph.invoke(None, config)
+            logger.info(f"Pipeline resumed and completed successfully for session {session_id}")
+        except Exception as e:
+            logger.exception(f"Error resuming Celery background pipeline for session {session_id}")
+            try:
+                snapshot = graph.get_state(config)
+                current_state = dict(snapshot.values) if (snapshot and snapshot.values) else {}
+                current_state["status"] = "error"
+                current_state["error"] = str(e)
+                if "logs" not in current_state:
+                    current_state["logs"] = []
+                current_state["logs"].append(f"Fatal task resume error: {e}")
+                graph.update_state(config, current_state)
+            except Exception as ex:
+                logger.error(f"Failed to record error on resume: {ex}")
 
 # --- API Endpoints ---
 

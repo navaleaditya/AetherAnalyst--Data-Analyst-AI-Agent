@@ -17,6 +17,30 @@ The system utilizes an **Agentic Loop architecture** powered by **LangGraph**, *
 
 ---
 
+## Application Walkthrough & Gallery
+
+### 1. Ingestion Dashboard (Landing Page)
+![Ingestion Landing Page](screenshots/01-upload-dashboard.png)
+*Caption: The clean, dark-themed landing page before ingestion, presenting a drag-and-drop interface for CSV/Excel uploads and session history tracking.*
+
+### 2. Real-Time Pipeline Tracker & Logs
+![Real-Time Pipeline Execution and Logs](screenshots/02-processing-logs.png)
+*Caption: The execution step tracker lights up and streams live terminal logs as the Polars profiler and Pandas correlation analyzer process the dataset.*
+
+### 3. Human-in-the-Loop Validation Prompt
+![Human-in-the-Loop Validation Prompt](screenshots/03-hitl-approval.png)
+*Caption: The agentic loop interrupts after task detection, prompting the user to review, override, or approve the AI-detected ML task type and target features.*
+
+### 4. Interactive Analytics Dashboard
+![Analytics Results & Model Interpretability Charts](screenshots/04-results-charts.png)
+*Caption: Once approved, the model executes classification, rendering feature importances and confusion matrix heatmaps.*
+
+### 5. Final Report & PDF Export
+![Completed Dashboard and PDF Export Button](screenshots/05-pdf-report.png)
+*Caption: The completed session summary where users can download the publication-grade PDF report compiled by ReportLab.*
+
+---
+
 ## System Architecture
 
 AetherAnalyst splits operations between a fast asynchronous **FastAPI** server and a resilient stateful **LangGraph** engine running in a **Celery** background task. State transitions are check-pointed in a local **SQLite** database, enabling the workflow to interrupt and resume seamlessly.
