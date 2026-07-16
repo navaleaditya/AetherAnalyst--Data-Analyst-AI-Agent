@@ -117,9 +117,9 @@ source venv/bin/activate
 ```
 
 ### 2. Install Dependencies
-Run the following command to install the required libraries:
+Run the following command to install the required libraries from the `requirements.txt` file:
 ```bash
-pip install fastapi uvicorn celery sqlalchemy python-multipart jinja2 aiofiles python-dotenv langgraph google-generativeai pandas polars numpy scikit-learn matplotlib reportlab openpyxl shap
+pip install -r requirements.txt
 ```
 
 ### 3. Configure Environment Variables
