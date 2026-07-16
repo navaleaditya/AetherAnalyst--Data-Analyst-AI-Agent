@@ -1,0 +1,31 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment Secrets
+.env
+
+# SQLite / Database checkpointer & broker files
+*.db
+*.sqlite
+
+# Generated Dynamic Assets
+static/uploads/*
+static/charts/*
+static/reports/*
+static/memory/*
+static/test_datasets/*
+
+# Allow placeholder .gitkeep files in dynamic directories
+!static/uploads/.gitkeep
+!static/charts/.gitkeep
+!static/reports/.gitkeep
+!static/test_datasets/.gitkeep
+!static/memory/.gitkeep

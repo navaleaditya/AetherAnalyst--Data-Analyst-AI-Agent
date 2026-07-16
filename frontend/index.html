@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous Data Analyst AI Agent</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Style Sheet -->
+    <link rel="stylesheet" href="/frontend/style.css">
+    <!-- Chart.js CDN for interactive visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon"></div>
+                <h2>Aether<span>Analyst</span></h2>
+            </div>
+            
+            <div class="upload-zone" id="upload-zone">
+                <input type="file" id="file-input" accept=".csv,.xlsx,.xls" hidden>
+                <div class="upload-icon"></div>
+                <h3>Ingest Dataset</h3>
+                <p>Drag & drop or click to browse</p>
+                <span class="file-spec">Supports CSV, XLS, XLSX</span>
+            </div>
+
+            <div class="history-panel">
+                <h3>Session History</h3>
+                <ul class="session-list" id="session-list">
+                    <!-- Session history items will be added here -->
+                    <li class="empty-history">No analysis sessions yet</li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="session-info">
+                    <h1 id="session-title">Awaiting Dataset Ingestion</h1>
+                    <p id="session-subtitle">Upload a dataset from the sidebar to launch the analysis agent</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary btn-glow" id="download-report-btn" disabled>
+                        <span class="icon-download"></span> Export PDF Report
+                    </button>
+                </div>
+            </header>
+
+            <!-- Agentic Status Tracker -->
+            <section class="stepper-section card" id="stepper-section" style="display: none;">
+                <div class="section-title">
+                    <h3>Agent Execution Pipeline</h3>
+                    <div class="pipeline-badge" id="pipeline-badge">Starting...</div>
+                </div>
+                
+                <div class="stepper-container">
+                    <div class="step-node" id="step-profiler">
+                        <div class="step-icon">1</div>
+                        <span class="step-name">Profiler</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step-node" id="step-correlation">
+                        <div class="step-icon">2</div>
+                        <span class="step-name">Correlation</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step-node" id="step-detector">
+                        <div class="step-icon">3</div>
+                        <span class="step-name">Task Detector</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step-node" id="step-executor">
+                        <div class="step-icon">4</div>
+                        <span class="step-name">ML Model</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step-node" id="step-charts">
+                        <div class="step-icon">5</div>
+                        <span class="step-name">Visualizer</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step-node" id="step-memory">
+                        <div class="step-icon">6</div>
+                        <span class="step-name">Report & Save</span>
+                    </div>
+                </div>
+
+                <div class="agent-console">
+                    <div class="console-header">
+                        <span>Agent Terminal Execution Logs</span>
+                        <div class="console-pulse"></div>
+                    </div>
+                    <div class="console-body" id="console-logs">
+                        <!-- Logs will append here in real-time -->
+                        <div class="log-entry log-system">> System ready. Spawning agent loop context.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Human-In-The-Loop Approval Panel -->
+            <section class="card span-12" id="approval-section" style="display: none; border: 1px solid var(--primary); background: rgba(124, 58, 237, 0.05); flex-direction: column; gap: 16px; padding: 24px; margin-bottom: 24px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                <div class="approval-header" style="display: flex; gap: 16px; align-items: center;">
+                    <div class="logo-icon glow-ring" style="width: 42px; height: 42px; background: var(--primary); border-radius: 50%; box-shadow: 0 0 15px var(--primary);"></div>
+                    <div>
+                        <h3 style="color: var(--primary); margin: 0; font-size: 1.25rem; font-weight: 600;">Human-In-The-Loop Validation Required</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #A6ADC8;">Please review or override the AI Agent's detected ML task and target variables before proceeding to model training.</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 24px; margin-top: 10px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <label style="display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.95rem; color: #CDD6F4;">Detected Task Type:</label>
+                        <select id="approval-task-type" style="width: 100%; padding: 10px; border-radius: 6px; background: #252538; border: 1px solid var(--border-normal); color: #CDD6F4; font-family: inherit;">
+                            <option value="classification">Supervised Classification</option>
+                            <option value="clustering">Unsupervised Clustering</option>
+                            <option value="anomaly">Outlier / Anomaly Detection</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; min-width: 250px;" id="approval-target-col-container">
+                        <label style="display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.95rem; color: #CDD6F4;">Target Label Feature (Classification Only):</label>
+                        <select id="approval-target-col" style="width: 100%; padding: 10px; border-radius: 6px; background: #252538; border: 1px solid var(--border-normal); color: #CDD6F4; font-family: inherit;">
+                            <!-- Dynamically loaded columns list -->
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top: 12px; display: flex; justify-content: flex-end; gap: 12px;">
+                    <button class="btn btn-primary btn-glow" id="approval-submit-btn" style="padding: 10px 24px; font-weight: 600; font-size: 0.95rem; border-radius: 6px;">
+                        Approve & Resume Pipeline
+                    </button>
+                </div>
+            </section>
+
+            <!-- Analytics Dashboard -->
+            <div class="dashboard-grid" id="dashboard-grid" style="display: none;">
+                <!-- Card 1: Data Summary Profiler -->
+                <section class="card span-12" id="card-profile">
+                    <h3>Dataset Profiling Summary</h3>
+                    <div class="stats-overview-row">
+                        <div class="stat-box">
+                            <span class="stat-label">Total Rows</span>
+                            <span class="stat-value" id="val-rows">-</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Total Columns</span>
+                            <span class="stat-value" id="val-cols">-</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Task Type</span>
+                            <span class="stat-value text-accent" id="val-task">-</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Target Feature</span>
+                            <span class="stat-value" id="val-target">-</span>
+                        </div>
+                    </div>
+                    <div class="profile-tables-container">
+                        <div class="profile-table-wrapper">
+                            <h4>Feature Data Types & Missing Values</h4>
+                            <div class="table-scroll">
+                                <table id="profile-table-summary">
+                                    <thead>
+                                        <tr>
+                                            <th>Feature Name</th>
+                                            <th>Data Type</th>
+                                            <th>Unique Count</th>
+                                            <th>Missing Rows</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Profile data rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Card 2: Correlation Analysis Heatmap -->
+                <section class="card span-6" id="card-correlation">
+                    <h3>Pearson Correlation Heatmap</h3>
+                    <div class="chart-container" id="correlation-chart-container">
+                        <!-- Correlation chart image -->
+                        <div class="chart-loading">Heatmap rendering...</div>
+                    </div>
+                    <div class="insight-block">
+                        <h4>Strong Collinearities</h4>
+                        <ul class="bullet-list" id="correlation-list">
+                            <!-- Strong correlation features -->
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Card 3: ML Task Decision Details -->
+                <section class="card span-6" id="card-task-details">
+                    <h3>ML Task Classification & Reasoning</h3>
+                    <div class="reasoning-callout">
+                        <div class="reasoning-badge" id="reasoning-badge">-</div>
+                        <p class="reasoning-text" id="reasoning-text">Analyzing reasoning...</p>
+                    </div>
+                    <div class="metrics-block" id="metrics-block">
+                        <h4>Model Performance Metrics</h4>
+                        <div class="metrics-grid" id="metrics-grid">
+                            <!-- Dynamically generated evaluation cards -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Card 4: Model Visualization & Feature Importance -->
+                <section class="card span-12" id="card-model-viz">
+                    <h3>Model Interpretability & Insights</h3>
+                    <div class="model-visual-row">
+                        <div class="model-chart-box">
+                            <h4 id="model-chart-title">Insights Visual</h4>
+                            <div class="chart-container" id="model-chart-container">
+                                <!-- Model prediction chart -->
+                            </div>
+                        </div>
+                        <div class="model-chart-box" id="confusion-matrix-box" style="display: none;">
+                            <h4>Confusion Matrix</h4>
+                            <div class="chart-container" id="confusion-matrix-container">
+                                <!-- Confusion Matrix chart -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Dashboard Welcome View -->
+            <div class="welcome-screen" id="welcome-screen">
+                <div class="welcome-hero">
+                    <div class="hero-graphic">
+                        <div class="glow-ring ring-1"></div>
+                        <div class="glow-ring ring-2"></div>
+                        <div class="glow-ring ring-3"></div>
+                        <div class="core-logo"></div>
+                    </div>
+                    <h2>Welcome to AetherAnalyst</h2>
+                    <p>An autonomous end-to-end data analyst agent powered by LangGraph & Gemini 2.5 Flash. Upload your dataset in the sidebar to auto-profile variables, generate correlation heatmaps, auto-detect targets, and run predictive machine learning classifiers, clustering or anomalies in under 15 seconds.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    <!-- App Script -->
+    <script src="/frontend/app.js"></script>
+</body>
+</html>
